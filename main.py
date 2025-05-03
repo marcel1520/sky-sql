@@ -43,7 +43,7 @@ def delayed_flights_by_airline(data_manager):
     """
     airline_input = input("Enter airline name: ")
     results = data_manager.get_delayed_flights_by_airline(airline_input)
-    print_results(results)
+    print_results(results, filter_delay_only=True)
 
 
 def delayed_flights_by_airport(data_manager):
@@ -59,7 +59,7 @@ def delayed_flights_by_airport(data_manager):
         if airport_input.isalpha() and len(airport_input) == IATA_LENGTH:
             valid = True
     results = data_manager.get_delayed_flights_by_airport(airport_input)
-    print_results(results)
+    print_results(results, filter_delay_only=True)
 
 
 def flight_by_id(data_manager):
@@ -99,7 +99,7 @@ def flights_by_date(data_manager):
     print_results(results)
 
 
-def print_results(results):
+def print_results(results, filter_delay_only=False):
     """
     Get a list of flight results (List of dictionary-like objects from SQLAachemy).
     Even if there is one result, it should be provided in a list.
@@ -113,18 +113,22 @@ def print_results(results):
 
         # Check that all required columns are in place
         try:
-            if result['DELAY'] is None or int(result['DELAY']) <= 0:
-                continue
-            delay = int(result['DELAY'])   # If delay columns is NULL, set it to 0
+            """if result['DELAY'] is None or int(result['DELAY']) <= 0:
+                continue"""
+            delay = int(result['DELAY'])  if result['DELAY'] is not None else 0   # If delay columns is NULL, set it to 0
             origin = result['ORIGIN_AIRPORT']
             dest = result['DESTINATION_AIRPORT']
             airline = result['AIRLINE']
+
+            if filter_delay_only and delay <= 0:
+                continue
+
         except (ValueError, sqlalchemy.exc.SQLAlchemyError) as e:
             print("Error showing results: ", e)
             return
 
         # Different prints for delayed and non-delayed flights
-        if delay and delay > 0:
+        if delay > 0:
             print(f"{result['ID']}. {origin} -> {dest} by {airline}, Delay: {delay} Minutes")
         else:
             print(f"{result['ID']}. {origin} -> {dest} by {airline}")
