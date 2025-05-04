@@ -4,6 +4,7 @@ import sqlalchemy
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import folium
 
 
 
@@ -13,6 +14,51 @@ QUERY_PERCENTAGE_DELAYED_BY_AIRLINE = "SELECT airlines.AIRLINE, COUNT(CASE WHEN 
 QUERY_PERCENTAGE_DELAYED_BY_HOUR = "SELECT DEPARTURE_TIME, DEPARTURE_DELAY FROM flights WHERE DEPARTURE_TIME IS NOT NULL AND DEPARTURE_DELAY IS NOT NULL"
 QUERY_HEATMAP_DELAY = "SELECT ORIGIN_AIRPORT, DESTINATION_AIRPORT, COUNT(*) AS total_flights, COUNT(CASE WHEN DEPARTURE_DELAY > 0 THEN 1 END) AS  delayed_flights FROM flights WHERE ORIGIN_AIRPORT IS NOT NULL AND DESTINATION_AIRPORT IS NOT NULL GROUP BY ORIGIN_AIRPORT, DESTINATION_AIRPORT"
 
+
+def show_delay_lines_on_route_map(data_manager):
+    origin = input("Enter IATA Code for Origin Airport: ")
+    destination = input("Enter IATA Code for Destination Airport: ")
+
+    QUERY_PERCENTAGE_ON_ROUTE_MAP = f"SELECT f.ORIGIN_AIRPORT, f.DESTINATION_AIRPORT, COUNT(*) AS total_flights, COUNT(CASE WHEN f.DEPARTURE_DELAY > 0 THEN 1 END) AS delayed_flights, a1.LATITUDE AS origin_lat, a1.LONGITUDE AS origin_lon, a2.LATITUDE AS dest_lat, a2.LONGITUDE AS dest_lon FROM flights f JOIN airports a1 ON f.ORIGIN_AIRPORT = a1.IATA_CODE JOIN airports a2 ON f.DESTINATION_AIRPORT = a2.IATA_CODE WHERE f.ORIGIN_AIRPORT = '{origin}' AND f.DESTINATION_AIRPORT = '{destination}' GROUP BY f.ORIGIN_AIRPORT, f.DESTINATION_AIRPORT;"
+
+    results = data_manager._execute_query(QUERY_PERCENTAGE_ON_ROUTE_MAP, {})
+    df = pd.DataFrame(results)
+    if df.empty:
+        print("No route data found.")
+        return
+
+    df['delay_percent'] =(df['delayed_flights'] / df['total_flights']) * 10
+
+    us_map = folium.Map(location=[39.8283, -98.5795], zoom_start=4)
+
+    df['origin_lat'] = pd.to_numeric(df['origin_lat'], errors='coerce')
+    df['origin_lon'] = pd.to_numeric(df['origin_lon'], errors='coerce')
+    df['dest_lat'] = pd.to_numeric(df['dest_lat'], errors='coerce')
+    df['dest_lon'] = pd.to_numeric(df['dest_lon'], errors='coerce')
+
+    for _, row in df.iterrows():
+        if any(pd.isnull([row['origin_lat'], row['origin_lon'], row['dest_lat'], row['dest_lon']])):
+            continue
+        delay = row['delay_percent']
+        if delay < 10:
+            color = 'green'
+        elif delay < 30:
+            color = 'orange'
+        else:
+            color = 'red'
+
+        folium.PolyLine(
+            locations=[
+                (row['origin_lat'], row['origin_lon']),
+                (row['dest_lat'], row['dest_lon'])
+                ],
+            color=color,
+            weight=2 + delay / 10,
+            opacity=0.6,
+            popup = f"{row['ORIGIN_AIRPORT']} -> {row['DESTINATION_AIRPORT']} ({delay:.1f}% delayed)"
+        ).add_to(us_map)
+    us_map.save('delays_map.html')
+    print("Flight paths map saved to flight_paths_delayed_map.html.")
 
 def show_delay_heatmap(data_manager):
     results = data_manager._execute_query(QUERY_HEATMAP_DELAY, {})
@@ -215,7 +261,8 @@ FUNCTIONS = {   1: (flight_by_id, "Show flight by ID"),
                 5: (show_delay_percent_by_airline, "Plot delay percentage by airline"),
                 6: (show_delay_percent_by_hour, "Plot delay percentage by hour"),
                 7: (show_delay_heatmap, "Plot delay heatmap"),
-                8: (quit, "Exit")
+                8: (show_delay_lines_on_route_map, "Plot delay route map"),
+                9: (quit, "Exit")
              }
 
 
