@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 SQLITE_URI = 'sqlite:///data/flights.sqlite3'
 IATA_LENGTH = 3
 QUERY_PERCENTAGE_DELAYED_BY_AIRLINE = "SELECT airlines.AIRLINE, COUNT(CASE WHEN flights.DEPARTURE_DELAY > 0 THEN 1 END) AS delayed_flights, COUNT(*) AS total_flights FROM airlines JOIN flights ON airlines.ID = flights.AIRLINE GROUP BY airlines.AIRLINE"
-QUERY_PERCENTAGE_DELAYED_BY_HOUR = "SELECT DEPARTURE_TIME, DEPARTURE_DELAY FROM flights WHERE DEPARTURE_DELAY IS NOT NULL"
+QUERY_PERCENTAGE_DELAYED_BY_HOUR = "SELECT DEPARTURE_TIME, DEPARTURE_DELAY FROM flights WHERE DEPARTURE_TIME IS NOT NULL AND DEPARTURE_DELAY IS NOT NULL"
 
 def show_delay_percent_by_hour(data_manager):
     results = data_manager._execute_query(QUERY_PERCENTAGE_DELAYED_BY_HOUR, {})
