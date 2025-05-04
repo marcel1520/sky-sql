@@ -9,6 +9,34 @@ import matplotlib.pyplot as plt
 SQLITE_URI = 'sqlite:///data/flights.sqlite3'
 IATA_LENGTH = 3
 QUERY_PERCENTAGE_DELAYED_BY_AIRLINE = "SELECT airlines.AIRLINE, COUNT(CASE WHEN flights.DEPARTURE_DELAY > 0 THEN 1 END) AS delayed_flights, COUNT(*) AS total_flights FROM airlines JOIN flights ON airlines.ID = flights.AIRLINE GROUP BY airlines.AIRLINE"
+QUERY_PERCENTAGE_DELAYED_BY_HOUR = "SELECT DEPARTURE_TIME, DEPARTURE_DELAY FROM flights WHERE DEPARTURE_DELAY IS NOT NULL"
+
+def show_delay_percent_by_hour(data_manager):
+    results = data_manager._execute_query(QUERY_PERCENTAGE_DELAYED_BY_HOUR, {})
+    if not results:
+        print("No results found.")
+        return
+    df = pd.DataFrame(results)
+
+    df['DEPARTURE_TIME'] = df['DEPARTURE_TIME'].astype(str).str.zfill(4)
+    df['HOUR'] = df['DEPARTURE_TIME'].str[:2].astype(int)
+
+    df = df[df['HOUR'] < 24]
+
+    df['DELAYED'] = df['DEPARTURE_DELAY'] > 0
+
+    grouped = df.groupby('HOUR')['DELAYED'].agg(['sum', 'count'])
+    grouped['PERCENT_DELAYED'] =(grouped['sum'] / grouped['count']) * 100
+
+    plt.figure(figsize=(12, 6))
+    plt.bar(grouped.index, grouped['PERCENT_DELAYED'], color='skyblue')
+    plt.xlabel('Hour of day (0-23)')
+    plt.ylabel('Percentage of Delayed Flights')
+    plt.title('Percentage of Delayed Flights by Hour of Day')
+    plt.xticks(range(0, 24))
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
 
 
 def show_delay_percent_by_airline(data_manager):
@@ -162,7 +190,8 @@ FUNCTIONS = {   1: (flight_by_id, "Show flight by ID"),
                 3: (delayed_flights_by_airline, "Delayed flights by airline"),
                 4: (delayed_flights_by_airport, "Delayed flights by origin airport"),
                 5: (show_delay_percent_by_airline, "Plot delay percentage by airline"),
-                6: (quit, "Exit")
+                6: (show_delay_percent_by_hour, "Plot delay percentage by hour"),
+                7: (quit, "Exit")
              }
 
 
