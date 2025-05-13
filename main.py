@@ -6,20 +6,45 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import folium
 
-
-
 SQLITE_URI = 'sqlite:///data/flights.sqlite3'
 IATA_LENGTH = 3
-QUERY_PERCENTAGE_DELAYED_BY_AIRLINE = "SELECT airlines.AIRLINE, COUNT(CASE WHEN flights.DEPARTURE_DELAY > 0 THEN 1 END) AS delayed_flights, COUNT(*) AS total_flights FROM airlines JOIN flights ON airlines.ID = flights.AIRLINE GROUP BY airlines.AIRLINE"
-QUERY_PERCENTAGE_DELAYED_BY_HOUR = "SELECT DEPARTURE_TIME, DEPARTURE_DELAY FROM flights WHERE DEPARTURE_TIME IS NOT NULL AND DEPARTURE_DELAY IS NOT NULL"
-QUERY_HEATMAP_DELAY = "SELECT ORIGIN_AIRPORT, DESTINATION_AIRPORT, COUNT(*) AS total_flights, COUNT(CASE WHEN DEPARTURE_DELAY > 0 THEN 1 END) AS  delayed_flights FROM flights WHERE ORIGIN_AIRPORT IS NOT NULL AND DESTINATION_AIRPORT IS NOT NULL GROUP BY ORIGIN_AIRPORT, DESTINATION_AIRPORT"
+
+QUERY_PERCENTAGE_DELAYED_BY_AIRLINE = ("SELECT airlines.AIRLINE, "
+                                       "COUNT(CASE WHEN flights.DEPARTURE_DELAY > 0 THEN 1 END) AS delayed_flights, "
+                                       "COUNT(*) AS total_flights "
+                                       "FROM airlines "
+                                       "JOIN flights ON airlines.ID = flights.AIRLINE "
+                                       "GROUP BY airlines.AIRLINE")
+
+QUERY_PERCENTAGE_DELAYED_BY_HOUR = ("SELECT DEPARTURE_TIME, DEPARTURE_DELAY "
+                                    "FROM flights "
+                                    "WHERE DEPARTURE_TIME IS NOT NULL AND DEPARTURE_DELAY IS NOT NULL")
+
+QUERY_HEATMAP_DELAY = ("SELECT ORIGIN_AIRPORT, DESTINATION_AIRPORT, "
+                       "COUNT(*) AS total_flights, "
+                       "COUNT(CASE WHEN DEPARTURE_DELAY > 0 THEN 1 END) AS  delayed_flights "
+                       "FROM flights WHERE ORIGIN_AIRPORT IS NOT NULL AND DESTINATION_AIRPORT IS NOT NULL "
+                       "GROUP BY ORIGIN_AIRPORT, DESTINATION_AIRPORT")
 
 
 def show_delay_lines_on_route_map(data_manager):
+    """
+        Displays a map showing flight delays between a specific origin and destination.
+        Delay severity is color-coded and mapped using Folium.
+        """
     origin = input("Enter IATA Code for Origin Airport: ")
     destination = input("Enter IATA Code for Destination Airport: ")
 
-    QUERY_PERCENTAGE_ON_ROUTE_MAP = f"SELECT f.ORIGIN_AIRPORT, f.DESTINATION_AIRPORT, COUNT(*) AS total_flights, COUNT(CASE WHEN f.DEPARTURE_DELAY > 0 THEN 1 END) AS delayed_flights, a1.LATITUDE AS origin_lat, a1.LONGITUDE AS origin_lon, a2.LATITUDE AS dest_lat, a2.LONGITUDE AS dest_lon FROM flights f JOIN airports a1 ON f.ORIGIN_AIRPORT = a1.IATA_CODE JOIN airports a2 ON f.DESTINATION_AIRPORT = a2.IATA_CODE WHERE f.ORIGIN_AIRPORT = '{origin}' AND f.DESTINATION_AIRPORT = '{destination}' GROUP BY f.ORIGIN_AIRPORT, f.DESTINATION_AIRPORT;"
+    QUERY_PERCENTAGE_ON_ROUTE_MAP = (f"SELECT f.ORIGIN_AIRPORT, f.DESTINATION_AIRPORT, "
+                                     f"COUNT(*) AS total_flights, "
+                                     f"COUNT(CASE WHEN f.DEPARTURE_DELAY > 0 THEN 1 END) AS delayed_flights, "
+                                     f"a1.LATITUDE AS origin_lat, a1.LONGITUDE AS origin_lon, "
+                                     f"a2.LATITUDE AS dest_lat, a2.LONGITUDE AS dest_lon "
+                                     f"FROM flights f "
+                                     f"JOIN airports a1 ON f.ORIGIN_AIRPORT = a1.IATA_CODE "
+                                     f"JOIN airports a2 ON f.DESTINATION_AIRPORT = a2.IATA_CODE "
+                                     f"WHERE f.ORIGIN_AIRPORT = '{origin}' AND f.DESTINATION_AIRPORT = '{destination}' "
+                                     f"GROUP BY f.ORIGIN_AIRPORT, f.DESTINATION_AIRPORT;")
 
     results = data_manager._execute_query(QUERY_PERCENTAGE_ON_ROUTE_MAP, {})
     df = pd.DataFrame(results)
@@ -60,7 +85,12 @@ def show_delay_lines_on_route_map(data_manager):
     us_map.save('delays_map.html')
     print("Flight paths map saved to flight_paths_delayed_map.html.")
 
+
 def show_delay_heatmap(data_manager):
+    """
+        Displays a heatmap of flight delays by route (origin to destination).
+        Uses seaborn to visualize delay percentages.
+        """
     results = data_manager._execute_query(QUERY_HEATMAP_DELAY, {})
     if not results:
         print("No data found.")
@@ -80,7 +110,12 @@ def show_delay_heatmap(data_manager):
     plt.tight_layout()
     plt.show()
 
+
 def show_delay_percent_by_hour(data_manager):
+    """
+        Displays a bar chart showing percentage of delayed flights by hour of departure.
+        Filters invalid hours and uses matplotlib for plotting.
+        """
     results = data_manager._execute_query(QUERY_PERCENTAGE_DELAYED_BY_HOUR, {})
     if not results:
         print("No results found.")
@@ -109,6 +144,9 @@ def show_delay_percent_by_hour(data_manager):
 
 
 def show_delay_percent_by_airline(data_manager):
+    """
+        Displays a bar chart showing the percentage of delayed flights for each airline.
+        """
     results = data_manager._execute_query(QUERY_PERCENTAGE_DELAYED_BY_AIRLINE, {})
     if not results:
         print("No results found.")
@@ -131,6 +169,7 @@ def show_delay_percent_by_airline(data_manager):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.show()
+
 
 def delayed_flights_by_airline(data_manager):
     """
